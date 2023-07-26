@@ -1,20 +1,18 @@
 package agh.ryszard.blazej.heartbeat
 
-import agh.ryszard.blazej.heartbeat.bluetooth.BluetoothUtils
 import android.os.Bundle
-import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
+import androidx.navigation.fragment.NavHostFragment
+
 
 class MainActivity : AppCompatActivity() {
-    lateinit var bluetoothUtils: BluetoothUtils
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        bluetoothUtils = BluetoothUtils();
-        bluetoothUtils.bluetoothStartup(this)
-        findViewById<Button>(R.id.search).setOnClickListener {
-            bluetoothUtils.bluetoothScan(this)
-        }
+
+        val navHostFragment = supportFragmentManager
+            .findFragmentById(R.id.nav_host_fragment) as NavHostFragment
+        val navController = navHostFragment.navController
     }
 }
