@@ -14,6 +14,7 @@ import com.polidea.rxandroidble2.scan.ScanFilter
 import com.polidea.rxandroidble2.scan.ScanSettings
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
+import org.reactivestreams.Subscription
 
 
 class BluetoothUtils
@@ -21,6 +22,7 @@ class BluetoothUtils
     private lateinit var rxBleClient: RxBleClient
     var found: Boolean = false
     var onDeviceFound = {}
+    var mScanSubscription: Disposable? = null
 
     fun bluetoothStartup(context: Context){
         rxBleClient = RxBleClient.create(context)
@@ -40,16 +42,17 @@ class BluetoothUtils
         }
         if(ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_COARSE_LOCATION)
             == PackageManager.PERMISSION_GRANTED) {
-            val subscribe = rxBleClient.scanBleDevices(scanSettings, scanFilter)
+            mScanSubscription = rxBleClient.scanBleDevices(scanSettings, scanFilter)
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(
                     {
                         if (it!=null &&
-                            it.bleDevice.name != null &&
+                            it.bleDevice.macAddress != null &&
                             it.bleDevice.name.toString().startsWith("Movesense")) {
                             Log.d("Device", "Movesense device: " + it.bleDevice.name)
-                            viewModel.setConnectedDevice(it.bleDevice.macAddress, it.bleDevice.name!!, activity)
+                            bluetoothScanStop()
                             onDeviceFound()
+                            viewModel.setConnectedDevice(it.bleDevice.macAddress, it.bleDevice.name!!, activity)
                         }
                     },
                     { onScanFailure(it) })
@@ -57,6 +60,11 @@ class BluetoothUtils
         else{
             Log.d("Device", "something went wrong")
         }
+    }
+
+    private fun bluetoothScanStop() {
+        mScanSubscription!!.dispose()
+        mScanSubscription = null
     }
 
      fun onScanFailure(throwable: Throwable) {
