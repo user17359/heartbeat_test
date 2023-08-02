@@ -1,6 +1,7 @@
 package agh.ryszard.blazej.heartbeat.viewmodel
 
 import agh.ryszard.blazej.heartbeat.data.AccDataResponse
+import agh.ryszard.blazej.heartbeat.data.IMU9DataResponse
 import android.content.Context
 import android.util.Log
 import androidx.lifecycle.LiveData
@@ -15,7 +16,7 @@ import com.movesense.mds.MdsSubscription
 import com.movesense.mds.internal.connectivity.MovesenseConnectedDevices
 
 
-const val URI_MEAS_ACC = "Meas/Acc/104"
+const val URI_MEAS_ACC = "Meas/IMU9/13"
 const val URI_EVENTLISTENER = "suunto://MDS/EventListener"
 
 class ConnectionViewModel : ViewModel() {
@@ -28,6 +29,7 @@ class ConnectionViewModel : ViewModel() {
     lateinit var mdsSubscription: MdsSubscription
     var onConnectionComplete = {}
 
+    //accelerometer
     private val _accX = MutableLiveData<Double>(0.0)
     val aacX: LiveData<Double> = _accX
     private val _accY = MutableLiveData<Double>(0.0)
@@ -35,6 +37,21 @@ class ConnectionViewModel : ViewModel() {
     private val _accZ = MutableLiveData<Double>(0.0)
     val aacZ: LiveData<Double> = _accZ
 
+    //gyroscope
+    private val _gyroX = MutableLiveData<Double>(0.0)
+    val gyroX: LiveData<Double> = _gyroX
+    private val _gyroY = MutableLiveData<Double>(0.0)
+    val gyroY: LiveData<Double> = _gyroY
+    private val _gyroZ = MutableLiveData<Double>(0.0)
+    val gyroZ: LiveData<Double> = _gyroZ
+
+    //magnetometer
+    private val _magnX = MutableLiveData<Double>(0.0)
+    val magnX: LiveData<Double> = _magnX
+    private val _magnY = MutableLiveData<Double>(0.0)
+    val magnY: LiveData<Double> = _magnY
+    private val _magnZ = MutableLiveData<Double>(0.0)
+    val magnZ: LiveData<Double> = _magnZ
 
 
     fun setConnectedDevice(macAddress: String, deviceName: String, context: Context) {
@@ -64,11 +81,23 @@ class ConnectionViewModel : ViewModel() {
                     Log.d("Listening", "onNotification(): $data")
 
                     // If UI not enabled, do it now
-                    val accResponse = Gson().fromJson(data, AccDataResponse::class.java)
-                    if (accResponse != null && accResponse.body!!.array.isNotEmpty()) {
-                        _accX.value = accResponse.body!!.array[0].x
-                        _accY.value = accResponse.body!!.array[0].y
-                        _accZ.value = accResponse.body!!.array[0].z
+                    val imuResponse = Gson().fromJson(data, IMU9DataResponse::class.java)
+                    if (imuResponse != null) {
+                        if(!imuResponse.body.arrayAcc.isNullOrEmpty()) {
+                            _accX.value = imuResponse.body.arrayAcc[0].x
+                            _accY.value = imuResponse.body.arrayAcc[0].y
+                            _accZ.value = imuResponse.body.arrayAcc[0].z
+                        }
+                        if(!imuResponse.body.arrayGyro.isNullOrEmpty()) {
+                            _gyroX.value = imuResponse.body.arrayGyro[0].x
+                            _gyroY.value = imuResponse.body.arrayGyro[0].y
+                            _gyroZ.value = imuResponse.body.arrayGyro[0].z
+                        }
+                        if(!imuResponse.body.arrayMagn.isNullOrEmpty()) {
+                            _magnX.value = imuResponse.body.arrayMagn[0].x
+                            _magnY.value = imuResponse.body.arrayMagn[0].y
+                            _magnZ.value = imuResponse.body.arrayMagn[0].z
+                        }
                     }
                 }
 

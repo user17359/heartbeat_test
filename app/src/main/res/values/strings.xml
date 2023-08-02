@@ -8,4 +8,6 @@
     <string name="x">X: %.2f</string>
     <string name="y">Y: %.2f</string>
     <string name="z">Z: %.2f</string>
+    <string name="magnetometer_readings">Magnetometer readings:</string>
+    <string name="gyroscope_readings">Gyroscope readings:</string>
 </resources>
