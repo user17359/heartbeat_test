@@ -1,6 +1,7 @@
 package agh.ryszard.blazej.heartbeat.viewmodel
 
-import agh.ryszard.blazej.heartbeat.data.AccDataResponse
+import agh.ryszard.blazej.heartbeat.data.EcgDataResponse
+import agh.ryszard.blazej.heartbeat.data.HrDataResponse
 import agh.ryszard.blazej.heartbeat.data.IMU9DataResponse
 import android.content.Context
 import android.util.Log
@@ -13,17 +14,17 @@ import com.movesense.mds.MdsConnectionListener
 import com.movesense.mds.MdsException
 import com.movesense.mds.MdsNotificationListener
 import com.movesense.mds.MdsSubscription
-import com.movesense.mds.internal.connectivity.MovesenseConnectedDevices
 
 
-const val URI_MEAS_ACC = "Meas/IMU9/13"
+const val URI_MEAS_IMU = "Meas/IMU9/13"
+const val URI_MEAS_ECG = "Meas/ECG/125"
+const val URI_MEAS_HR = "Meas/HR"
 const val URI_EVENTLISTENER = "suunto://MDS/EventListener"
 
 class ConnectionViewModel : ViewModel() {
 
     val connectionListener = ConnectionListener()
     private lateinit var _macAddress: String
-    private lateinit var _serial : String
     lateinit var deviceName: String
     lateinit var mds: Mds
     lateinit var mdsSubscription: MdsSubscription
@@ -53,6 +54,11 @@ class ConnectionViewModel : ViewModel() {
     private val _magnZ = MutableLiveData<Double>(0.0)
     val magnZ: LiveData<Double> = _magnZ
 
+    //other parameters
+    private val _ecg = MutableLiveData<Int>(0)
+    val ecg: LiveData<Int> = _ecg
+    private val _hr = MutableLiveData<Int>(0)
+    val hr: LiveData<Int> = _hr
 
     fun setConnectedDevice(macAddress: String, deviceName: String, context: Context) {
         _macAddress = macAddress
@@ -72,15 +78,16 @@ class ConnectionViewModel : ViewModel() {
     }
 
     fun startListening(context: Context) {
-        val strContract: String = FormatHelper.formatContractToJson(connectionListener.serial, URI_MEAS_ACC)
-        Log.d("Listening", strContract)
+
+        // first we connect with imu (accelerometer + gyroscope + magnetometer)
+        val imuContract: String = FormatHelper.formatContractToJson(connectionListener.serial, URI_MEAS_IMU)
+        Log.d("Listening", imuContract)
 
         mdsSubscription = mds.subscribe(
-            URI_EVENTLISTENER, strContract, object : MdsNotificationListener {
+            URI_EVENTLISTENER, imuContract, object : MdsNotificationListener {
                 override fun onNotification(data: String) {
                     Log.d("Listening", "onNotification(): $data")
 
-                    // If UI not enabled, do it now
                     val imuResponse = Gson().fromJson(data, IMU9DataResponse::class.java)
                     if (imuResponse != null) {
                         if(!imuResponse.body.arrayAcc.isNullOrEmpty()) {
@@ -106,6 +113,50 @@ class ConnectionViewModel : ViewModel() {
                 }
             })
 
+        // second connection is with the ECG sensor
+
+        val ecgContract = FormatHelper.formatContractToJson(connectionListener.serial, URI_MEAS_ECG)
+        Log.d("ListeningECG", ecgContract)
+
+        mdsSubscription = Mds.builder().build(context).subscribe(
+            URI_EVENTLISTENER, ecgContract, object : MdsNotificationListener {
+                override fun onNotification(data: String) {
+                    Log.d("ListeningECG", "onNotification(): $data")
+
+                    val ecgResponse = Gson().fromJson(data, EcgDataResponse::class.java)
+                    if (ecgResponse?.body != null) {
+                        if(!ecgResponse.body!!.data.isNullOrEmpty()) {
+                            _ecg.value = ecgResponse.body!!.data!![0]
+                        }
+                    }
+                }
+
+                override fun onError(error: MdsException) {
+                    Log.e("ListeningECG", "subscription onError(): ", error)
+                }
+            })
+
+        // lastly we connect with heart rate measurement
+        val hrContract = FormatHelper.formatContractToJson(connectionListener.serial, URI_MEAS_HR)
+        Log.d("ListeningHR", hrContract)
+
+        mdsSubscription = Mds.builder().build(context).subscribe(
+            URI_EVENTLISTENER, hrContract, object : MdsNotificationListener {
+                override fun onNotification(data: String) {
+                    Log.d("ListeningHR", "onNotification(): $data")
+
+                    val hrResponse = Gson().fromJson(data, HrDataResponse::class.java)
+                    if (hrResponse?.body != null) {
+                        if(hrResponse.body.average != null) {
+                            _hr.value = hrResponse.body.average.toInt()
+                        }
+                    }
+                }
+
+                override fun onError(error: MdsException) {
+                    Log.e("ListeningECG", "subscription onError(): ", error)
+                }
+            })
     }
 }
 
